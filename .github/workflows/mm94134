@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>易經卦象轉換｜優化版</title>
+    <meta name="description" content="將英數字串轉換為卦象與強度，支援手機、深色模式、可下載結果與統計。" />
+
+    <style>
+      :root {
+        --bg: #f6f7fb;
+        --card: #ffffff;
+        --text: #1f2937;
+        --muted: #6b7280;
+        --primary: #1976d2;
+        --primary-700: #115aa3;
+        --border: #e5e7eb;
+        --success: #16a34a;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --info: #0ea5e9;
+        --badge-fg: #0b1220;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0b1220;
+          --card: #0f172a;
+          --text: #e5e7eb;
+          --muted: #94a3b8;
+          --primary: #60a5fa;
+          --primary-700: #3b82f6;
+          --border: #1f2a44;
+          --badge-fg: #ffffff;
+        }
+      }
+
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans TC, Microsoft JhengHei, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+      }
+
+      .wrap {
+        max-width: 1100px;
+        margin: 24px auto;
+        padding: 0 16px 56px;
+      }
+
+      header { text-align: center; }
+      header h1 { margin: 6px 0 4px; font-size: clamp(20px, 3.6vw, 28px); }
+      header p { margin: 0; color: var(--muted); font-size: 14px; }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: 0 6px 24px rgba(0,0,0,.06);
+        padding: 16px;
+      }
+
+      .controls { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 16px; }
+      @media (min-width: 720px) { .controls { grid-template-columns: 1.2fr .8fr auto auto; } }
+
+      label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px; }
+      input[type="text"], select {
+        width: 100%;
+        padding: 12px 12px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: transparent;
+        color: var(--text);
+        outline: none;
+      }
+      input::placeholder { color: var(--muted); }
+
+      .btn {
+        appearance: none;
+        border: 0; border-radius: 10px;
+        padding: 12px 16px; font-weight: 600; cursor: pointer;
+        background: var(--primary); color: #fff;
+        transition: transform .04s ease, background .2s ease;
+        white-space: nowrap;
+      }
+      .btn:hover { background: var(--primary-700); }
+      .btn:active { transform: translateY(1px); }
+      .btn.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+
+      .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+      .table-wrap { margin-top: 18px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--card); }
+      .table-scroll { overflow-x: auto; }
+
+      table { width: 100%; border-collapse: collapse; min-width: 720px; }
+      th, td { padding: 10px 12px; text-align: center; border-bottom: 1px solid var(--border); }
+      thead th { position: sticky; top: 0; background: var(--card); z-index: 1; }
+      tbody tr:nth-child(odd) td { background: color-mix(in srgb, var(--card) 92%, var(--primary) 8%); }
+
+      .badge { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--badge-fg) !important; }
+      .b-最強 { background: color-mix(in srgb, var(--success) 16%, #000000 84%); border: 1px solid color-mix(in srgb, var(--success) 60%, #000 0%); }
+      .b-次強 { background: color-mix(in srgb, var(--info) 16%, #000000 84%); border: 1px solid color-mix(in srgb, var(--info) 60%, #000 0%); }
+      .b-次弱 { background: color-mix(in srgb, var(--warning) 16%, #000000 84%); border: 1px solid color-mix(in srgb, var(--warning) 60%, #000 0%); }
+      .b-最弱 { background: color-mix(in srgb, var(--danger) 16%, #000000 84%); border: 1px solid color-mix(in srgb, var(--danger) 60%, #000 0%); }
+
+      .stats { margin-top: 18px; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+      .stat {
+        border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--card);
+      }
+      .stat h4 { margin: 0 0 6px; font-size: 13px; color: var(--muted); font-weight: 600; }
+      .stat strong { font-size: 22px; }
+
+      .footer-note { text-align: center; color: var(--muted); font-size: 12px; margin-top: 18px; }
+
+      .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>易經卦象轉換</h1>
+        <p>輸入英數字串 → 取得連續雙位數對應之卦象、強度與統計</p>
+      </header>
+
+      <section class="card" aria-labelledby="controls-title">
+        <h2 id="controls-title" class="sr-only">輸入設定</h2>
+        <div class="controls">
+          <div>
+            <label for="inputText">輸入英文或數字（可混合）</label>
+            <input id="inputText" type="text" placeholder="例如：Abc19xZ 或 ROgerXu0913" autocomplete="off" />
+            <p class="hint">字母自動轉為 01–26；其餘數字保留。依規則處理 5、產生連續雙位數（重疊視窗）。</p>
+          </div>
+
+          <div>
+            <label for="typeSelect">類型</label>
+            <select id="typeSelect">
+              <option value="person">人</option>
+              <option value="object">物品</option>
+            </select>
+            <p class="hint">選「人」會顯示年齡（起 13 歲，每格 +5）。</p>
+          </div>
+
+          <div>
+            <label class="sr-only" for="convertBtn">執行轉換</label>
+            <button id="convertBtn" class="btn" type="button">轉換</button>
+          </div>
+
+          <div>
+            <label class="sr-only" for="resetBtn">清空</label>
+            <button id="resetBtn" class="btn secondary" type="button">清空</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="table-wrap" aria-live="polite" aria-atomic="true">
+        <div class="table-scroll">
+          <table id="resultTable" role="table" aria-describedby="table-caption">
+            <caption id="table-caption" class="sr-only">轉換結果表</caption>
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="statSection" class="stats" aria-label="卦象統計"></section>
+
+      <p class="footer-note">無第三方追蹤，支援深色模式。鍵盤：Enter 轉換、Esc 清空。</p>
+    </div>
+
+    <script>
+      // —— 規則資料 ——
+      const HEX_RULES = {
+        '生氣': { '最強': ['14','41'], '次強': ['67','76'], '次弱': ['39','93'], '最弱': ['28','82'] },
+        '天醫': { '最強': ['13','31'], '次強': ['68','86'], '次弱': ['49','94'], '最弱': ['27','72'] },
+        '延年': { '最強': ['19','91'], '次強': ['78','87'], '次弱': ['34','43'], '最弱': ['26','62'] },
+        '伏位': { '最強': ['11','22','02','01','10','20','00'], '次強': ['99','88','09','08','80','90'], '次弱': ['66','77','06','07','60','70'], '最弱': ['33','44','03','04','30','40'] },
+        '六煞': { '最強': ['16','61'], '次強': ['47','74'], '次弱': ['38','83'], '最弱': ['29','92'] },
+        '禍害': { '最強': ['17','71'], '次強': ['89','98'], '次弱': ['46','64'], '最弱': ['23','32'] },
+        '五鬼': { '最強': ['18','81'], '次強': ['79','97'], '次弱': ['36','63'], '最弱': ['24','42'] },
+        '絕命': { '最強': ['12','21'], '次強': ['69','96'], '次弱': ['48','84'], '最弱': ['37','73'] },
+      };
+
+      // 建立 pair → {hexagram, strength} 反向索引，加速查找
+      const PAIR_MAP = (() => {
+        const map = new Map();
+        Object.entries(HEX_RULES).forEach(([hex, groups]) => {
+          Object.entries(groups).forEach(([strength, arr]) => {
+            arr.forEach(p => map.set(p, { hexagram: hex, strength }));
+          });
+        });
+        return map;
+      })();
+
+      const ABC = Object.fromEntries('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((c,i)=>[c,String(i+1).padStart(2,'0')]));
+
+      function normalizeInput(raw) {
+        if (!raw) return '';
+        let s = raw.toUpperCase().split('').map(ch => {
+          if (ABC[ch]) return ABC[ch];
+          if (/\d/.test(ch)) return ch;
+          return '';
+        }).join('');
+
+        if (s.length > 0) {
+          if (s[0] === '5') s = '0' + s.slice(1);
+          if (s.at(-1) === '5') s = s.slice(0, -1) + '0';
+        }
+        s = s.replace(/1(5+)9/g, '1919');
+        s = s.replace(/9(5+)1/g, '9191');
+        s = s.replace(/5/g, '');
+        return s;
+      }
+
+      function toPairs(numStr) {
+        const pairs = [];
+        for (let i = 0; i < numStr.length - 1; i++) {
+          pairs.push(numStr.substring(i, i + 2));
+        }
+        return pairs;
+      }
+
+      function classifyPairs(pairs) {
+        const results = pairs.map(p => {
+          const info = PAIR_MAP.get(p);
+          return info ? { pair: p, ...info } : { pair: p, hexagram: '無', strength: '無' };
+        });
+        for (let i = 0; i < results.length; i++) {
+          if (results[i].hexagram === '伏位' && i > 0) {
+            results[i].hexagram = results[i-1].hexagram;
+            results[i].strength = results[i-1].strength;
+          }
+        }
+        return results;
+      }
+
+      function renderTable(pairsInfo, type) {
+        const table = document.getElementById('resultTable');
+        const thead = table.querySelector('thead');
+        const tbody = table.querySelector('tbody');
+        thead.innerHTML = '';
+        tbody.innerHTML = '';
+
+        if (type === 'person' && pairsInfo.length) {
+          const trAge = document.createElement('tr');
+          trAge.innerHTML = `<th scope="col">年齡</th>` + pairsInfo.map((_, i) => `<td>${13 + 5*i}</td>`).join('');
+          thead.appendChild(trAge);
+        }
+
+        const trNum = document.createElement('tr');
+        trNum.innerHTML = `<th scope="col">數字</th>` + pairsInfo.map(x => `<td>${x.pair}</td>`).join('');
+        thead.appendChild(trNum);
+
+        const trHex = document.createElement('tr');
+        trHex.innerHTML = `<th scope="row">卦象</th>` + pairsInfo.map(x => `<td>${x.hexagram}</td>`).join('');
+        tbody.appendChild(trHex);
+
+        const trStr = document.createElement('tr');
+        trStr.innerHTML = `<th scope="row">強度</th>` + pairsInfo.map(x => {
+          const cls = ['最強','次強','次弱','最弱'].includes(x.strength) ? `badge b-${x.strength}` : '';
+          const content = x.strength === '無' ? '無' : `<span class="badge ${cls}">${x.strength}</span>`;
+          return `<td>${content}</td>`;
+        }).join('');
+        tbody.appendChild(trStr);
+      }
+
+      function renderStats(pairsInfo) {
+        const statDom = document.getElementById('statSection');
+        statDom.innerHTML = '';
+
+        if (!pairsInfo.length) return;
+
+        const count = new Map();
+        for (const x of pairsInfo) {
+          if (x.hexagram === '無') continue;
+          count.set(x.hexagram, (count.get(x.hexagram) || 0) + 1);
+        }
+
+        const tier = new Map();
+        for (const x of pairsInfo) {
+          if (!['最強','次強','次弱','最弱'].includes(x.strength)) continue;
+          tier.set(x.strength, (tier.get(x.strength) || 0) + 1);
+        }
+
+        const totalCard = document.createElement('div');
+        totalCard.className = 'stat';
+        totalCard.innerHTML = `<h4>卦象總數</h4><strong>${pairsInfo.length}</strong>`;
+        statDom.appendChild(totalCard);
+
+        count.forEach((v,k) => {
+          const d = document.createElement('div');
+          d.className = 'stat';
+          d.innerHTML = `<h4>${k}</h4><strong>${v} 次</strong>`;
+          statDom.appendChild(d);
+        });
+
+        tier.forEach((v,k) => {
+          const d = document.createElement('div');
+          d.className = 'stat';
+          d.innerHTML = `<h4>${k}</h4><strong>${v} 次</strong>`;
+          statDom.appendChild(d);
+        });
+      }
+
+      function process() {
+        const raw = document.getElementById('inputText').value.trim();
+        const type = document.getElementById('typeSelect').value;
+        const numStr = normalizeInput(raw);
+
+        if (!numStr || numStr.length < 2) {
+          renderTable([], type);
+          renderStats([]);
+          return;
+        }
+        const pairs = toPairs(numStr);
+        const info = classifyPairs(pairs);
+        renderTable(info, type);
+        renderStats(info);
+      }
+
+      function resetAll() {
+        document.getElementById('inputText').value = '';
+        renderTable([], 'person');
+        renderStats([]);
+        document.getElementById('inputText').focus();
+      }
+
+      document.getElementById('convertBtn').addEventListener('click', process);
+      document.getElementById('resetBtn').addEventListener('click', resetAll);
+      document.getElementById('typeSelect').addEventListener('change', process);
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') process();
+        if (e.key === 'Escape') resetAll();
+      });
+
+      process();
+    </script>
+  </body>
+</html>
